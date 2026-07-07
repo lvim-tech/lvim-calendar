@@ -1,0 +1,250 @@
+*lvim-calendar.txt*      Month/quarter/year/agenda calendar for the lvim-tech set
+
+==============================================================================
+CONTENTS                                                     *lvim-calendar*
+
+  1. Introduction ........................... |lvim-calendar-intro|
+  2. Requirements ........................... |lvim-calendar-requirements|
+  3. Setup .................................. |lvim-calendar-setup|
+  4. Views .................................. |lvim-calendar-views|
+  5. Panel keys ............................. |lvim-calendar-keys|
+  6. Sources ................................ |lvim-calendar-sources|
+  7. API .................................... |lvim-calendar-api|
+  8. Events ................................. |lvim-calendar-events|
+  9. Command ................................ |lvim-calendar-command|
+ 10. Highlights ............................. |lvim-calendar-highlights|
+ 11. Health ................................. |lvim-calendar-health|
+
+==============================================================================
+1. INTRODUCTION                                        *lvim-calendar-intro*
+
+lvim-calendar is a calendar panel built on the canonical lvim-ui surface
+chassis: four views (month, quarter, year, agenda) over one date model and
+one cell renderer, Emacs-grade date navigation, and day DECORATIONS coming
+from pluggable SOURCES — the seam org- and markdown-note systems plug into
+without the calendar knowing about them.
+
+Selecting a day either resolves a consumer callback (a date picker for other
+plugins' forms) or inserts the formatted date into the buffer the calendar
+was opened from.
+
+==============================================================================
+2. REQUIREMENTS                                 *lvim-calendar-requirements*
+
+Neovim >= 0.10, lvim-ui (the surface chassis) and lvim-utils (palette,
+self-theming, cursor management).
+
+==============================================================================
+3. SETUP                                               *lvim-calendar-setup*
+
+Call setup() to merge options, bind the highlights, register the built-in
+sources and the |:LvimCalendar| command. The full defaults: >lua
+
+    require("lvim-calendar").setup({
+        view = "quarter",          -- month | quarter | year | agenda
+        layout = "float",          -- float | area | bottom
+        first_day = "monday",      -- monday | sunday
+        week_numbers = false,      -- ISO week numbers per grid row
+        insert_format = "%Y-%m-%d",-- os.date format for the <CR> insert
+        agenda = {
+            span = "week",         -- day | week | fortnight | month
+            show_empty = false,    -- show day sections without entries
+        },
+        holidays = {},             -- built-in holidays source input
+        dates = {},                -- built-in user dates source input
+        keys = {
+            prev_day = "h",   next_day = "l",
+            next_week = "j",  prev_week = "k",
+            prev_month = "H", next_month = "L",
+            next_year = "J",  prev_year = "K",
+            week_start = "0", week_end = "$",
+            today = { "t", "." },
+            next_mark = "w",  prev_mark = "b",
+            goto_date = "g",  cycle_view = "v",
+            select = "<CR>",  create = "i",
+        },
+        icons = {
+            title = "󰃭",      -- panel border-title glyph
+            holidays = "",    -- holidays source lead icon
+            dates = "󰃶",      -- dates source lead icon
+            mark = "•",       -- default decorated-day mark
+        },
+    })
+<
+`holidays` entries are `{ date, title }` — "MM-DD" recurs every year,
+"YYYY-MM-DD" is a single occurrence. `dates` entries are
+`{ date, title, time?, mark?, file?, line? }`; `file`/`line` make the agenda
+<CR> jump there.
+
+==============================================================================
+4. VIEWS                                               *lvim-calendar-views*
+
+month~
+    One full month grid: weekday header, optional ISO week numbers,
+    other-month padding dimmed, weekends tinted, today and the cell cursor
+    highlighted, decorated days carrying their source mark.
+
+quarter~
+    The Emacs calendar strip — previous / CURRENT / next month side by side.
+    The cursor month is always the center block, so moving past an edge
+    re-centers the strip.
+
+year~
+    12 compact mini-months in a responsive grid (4 columns when the editor
+    is wide enough, else 3). Marks collapse to a dot. <CR> zooms into the
+    month view on the cursor month.
+
+agenda~
+    A date-anchored entry list over a span (day / week / fortnight / month;
+    its own filter band): one section per day, rows = source icon + time +
+    title. Empty days are elided unless `agenda.show_empty`. <CR> opens the
+    entry (source `on_open`, else `edit file` + line).
+
+The header carries the view filter band ([m]onth [Q]uarter [y]ear [a]genda),
+the agenda span band, and a `‹ Month Year ›` / today nav band; the
+month-year button opens a quick-jump (month picker, then a year prompt).
+CTRL-J / CTRL-K move between the bands, the grid and the footer.
+
+==============================================================================
+5. PANEL KEYS                                           *lvim-calendar-keys*
+
+    h / l            one day back / forward
+    j / k            one week forward / back (agenda: next/previous entry)
+    H / L            one month back / forward
+    J / K            one year forward / back
+    0 / $            start / end of the cursor week
+    t / .            today
+    w / b            next / previous decorated day (a day with entries)
+    g                goto date (see below)
+    v                cycle month → quarter → year → agenda
+    m Q y a          switch the view directly
+    d W f M          agenda span: day / week / fortnight / month
+    <CR>             confirm the day / open the entry / zoom the year cell
+    i                create an entry (source on_create; chooser when many)
+    q / <Esc>        close
+
+The goto-date prompt accepts absolute dates ("2026-07-06", "06.07",
+"6.7.2027"), relative offsets ("+3d", "-2w", "+1m", "-1y") and "" / "t" for
+today.
+
+==============================================================================
+6. SOURCES                                           *lvim-calendar-sources*
+
+                                             *lvim-calendar.register_source()*
+require("lvim-calendar").register_source({spec})
+    Register an entry source: >lua
+
+        require("lvim-calendar").register_source({
+            name = "org-notes",     -- unique id
+            icon = "",             -- agenda lead glyph
+            accent = "green",       -- palette color: day tint + lead box
+            get = function(range, done)
+                -- range = { from = "2026-07-01", to = "2026-07-31" }
+                -- return entries synchronously, or call done(entries)
+                return {
+                    { date = "2026-07-06", title = "standup",
+                      time = "09:30", file = "~/notes/x.md", line = 12 },
+                }
+            end,
+            on_open = nil,          -- entry → custom jump
+            on_create = nil,        -- (date) → new entry (the `i` key)
+        })
+<
+    `get` is called ONCE per visible range (batched, never per day); results
+    are cached per (source, month). Async replies are generation-guarded: a
+    reply arriving after |lvim-calendar.refresh()| bumped the generation is
+    dropped. Entries may override `mark` / `hl` per entry.
+
+Built-in sources `holidays` and `dates` are registered by setup() from the
+config tables and double as reference implementations.
+
+==============================================================================
+7. API                                                   *lvim-calendar-api*
+
+                                                       *lvim-calendar.open()*
+require("lvim-calendar").open({opts})
+    Open the panel. {opts}: `view`, `layout` (session-sticky), `date`
+    ("YYYY-MM-DD" or `{ y, m, d }`), `on_select(date)`.
+
+                                                      *lvim-calendar.close()*
+require("lvim-calendar").close()
+    Close the panel when open.
+
+                                                       *lvim-calendar.pick()*
+require("lvim-calendar").pick({opts})
+    Date-picker convenience for other plugins' forms: opens the calendar
+    (month view by default) and resolves the picked day through
+    `callback(date)`.
+
+                                                    *lvim-calendar.refresh()*
+require("lvim-calendar").refresh({name})
+    Drop cached entries (one source, or all with no argument), bump the
+    generation and repaint an open panel. Call it after writing a note file.
+
+                                                *lvim-calendar.entries_for()*
+require("lvim-calendar").entries_for({date})
+    All entries on one day ("YYYY-MM-DD"), merged across sources and sorted
+    by time.
+
+                                         *lvim-calendar.dates_with_entries()*
+require("lvim-calendar").dates_with_entries({range})
+    Sorted unique dates carrying at least one entry inside the inclusive
+    `{ from, to }` ISO range.
+
+                                                      *lvim-calendar.model*
+require("lvim-calendar").model
+    The pure date-math module (grids, shifts, ISO weeks, parsing) —
+    re-exported for consumers computing ranges.
+
+==============================================================================
+8. EVENTS                                             *lvim-calendar-events*
+
+All fired as |User| autocommands:
+
+    LvimCalendarOpen     the panel opened; data = { date, view }
+    LvimCalendarClose    the panel closed
+    LvimCalendarDay      the cell cursor landed on a day;
+                         data = { date, entries } — the live-preview seam
+
+==============================================================================
+9. COMMAND                                           *lvim-calendar-command*
+
+                                                             *:LvimCalendar*
+:LvimCalendar [view] [layout]
+    Open the calendar. A view token (month|quarter|year|agenda) and/or a
+    layout token (float|area|bottom), in any order; both tab-complete. A
+    layout given here is sticky for the session; `layout` in setup() is the
+    cross-session default. Registered by setup().
+
+==============================================================================
+10. HIGHLIGHTS                                    *lvim-calendar-highlights*
+
+Self-themed from the lvim-utils palette (re-derived on ColorScheme /
+palette sync), overwritable by a colorscheme:
+
+    LvimCalendarHeading            month/year headings (blue bold)
+    LvimCalendarWeekday            weekday header (dim)
+    LvimCalendarWeeknum            ISO week numbers (dim)
+    LvimCalendarDay                a plain day cell
+    LvimCalendarFaded              other-month padding cells
+    LvimCalendarWeekend            Saturday/Sunday cells (red tint)
+    LvimCalendarToday              today (blue tint, bold)
+    LvimCalendarCursor             the cell cursor (yellow tint; wins)
+    LvimCalendarMark               decorated-day fallback
+    LvimCalendarMark<Source>       per-source day mark
+    LvimCalendarLead<Source>       per-source agenda lead box
+    LvimCalendarAgendaHeader       agenda day-section headers
+    LvimCalendarAgendaRowB/Y       agenda entry rows (striped)
+    LvimCalendarAgendaRowActiveB/Y the active agenda row
+    LvimCalendarEmpty              "no entries" placeholders
+
+==============================================================================
+11. HEALTH                                            *lvim-calendar-health*
+
+                                              *:checkhealth-lvim-calendar*
+:checkhealth lvim-calendar
+    Reports the lvim-ui / lvim-utils base, verifies every configured glyph
+    is single-width (the fixed cell boxes require it), and lists each
+    registered source with its cache state (months cached, generation).
+
+vim:tw=78:ts=8:ft=help:norl:
