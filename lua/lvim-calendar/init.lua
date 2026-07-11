@@ -57,7 +57,7 @@ end
 function M.pick(opts)
     opts = opts or {}
     panel.open({
-        view = opts.view or "month",
+        view = opts.view or config.view,
         layout = opts.layout,
         date = opts.date,
         on_select = opts.callback,
