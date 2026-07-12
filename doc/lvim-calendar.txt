@@ -127,6 +127,12 @@ The goto-date prompt accepts absolute dates ("2026-07-06", "06.07",
 "6.7.2027"), relative offsets ("+3d", "-2w", "+1m", "-1y") and "" / "t" for
 today.
 
+Mouse ~
+Left-click a day in the grid (month / quarter / year) to land the cursor on it,
+exactly as the arrow keys do (same day-change event + repaint); in the agenda,
+click an entry row to select it. The header filter / span / nav bands and the
+footer actions are click targets too. A click is a no-op while 'mouse' is empty.
+
 ==============================================================================
 6. SOURCES                                           *lvim-calendar-sources*
 

@@ -18,6 +18,7 @@ local M = {}
 ---@class LvimCalendarSpan
 ---@field text string
 ---@field hl? string
+---@field date? string  -- ISO date this span IS a clickable day cell for (mouse hit-testing; see flatten)
 
 ---@class LvimCalendarBlock
 ---@field rows LvimCalendarSpan[][]
@@ -134,7 +135,10 @@ function M.month_block(y, m, ctx)
             else
                 text = string.format(" %2d", cell.date.d) .. markch
             end
-            row[#row + 1] = { text = text, hl = group }
+            -- The cell carries its ISO date so `flatten` can emit a mouse hitbox (a click on the day box
+            -- lands on that date, exactly as the arrow keys do) — for EVERY day incl. faded other-month
+            -- cells, since arrow navigation also crosses month edges.
+            row[#row + 1] = { text = text, hl = group, date = model.to_string(cell.date) }
             if gap > 0 and i < 7 then
                 row[#row + 1] = { text = " " }
             end
@@ -214,14 +218,16 @@ function M.vjoin(blocks)
     return { rows = rows, width = width, cursor_row = cursor_row }
 end
 
---- Flatten span rows into the surface provider's `lines, hls` shape. THE one place display
---- columns meet byte offsets: padding above is computed in DISPLAY cells (strdisplaywidth — a
---- multibyte mark glyph must not break the column alignment), while the extmark highlight ranges
---- here are BYTE offsets (`#text`), which is what nvim_buf_set_extmark consumes.
+--- Flatten span rows into the surface provider's `lines, hls` shape, plus per-day mouse `hitboxes`. THE
+--- one place display columns meet byte offsets: padding above is computed in DISPLAY cells (strdisplaywidth
+--- — a multibyte mark glyph must not break the column alignment), while the extmark highlight ranges here
+--- are BYTE offsets (`#text`), which is what nvim_buf_set_extmark consumes. A span carrying a `date` (a day
+--- cell) also emits a hitbox `{ row (0-based), c0, c1 (byte cols), date }` the panel hit-tests a click
+--- against — the box's own rendered byte span, so the click maps precisely to that day and no other.
 ---@param rows LvimCalendarSpan[][]
----@return string[] lines, table[] hls
+---@return string[] lines, table[] hls, table[] hitboxes
 function M.flatten(rows)
-    local lines, hls = {}, {}
+    local lines, hls, hitboxes = {}, {}, {}
     for r, row in ipairs(rows) do
         local parts = {}
         local byte = 0
@@ -231,11 +237,14 @@ function M.flatten(rows)
             if sp.hl and len > 0 then
                 hls[#hls + 1] = { r - 1, byte, byte + len, sp.hl }
             end
+            if sp.date and len > 0 then
+                hitboxes[#hitboxes + 1] = { row = r - 1, c0 = byte, c1 = byte + len, date = sp.date }
+            end
             byte = byte + len
         end
         lines[r] = table.concat(parts)
     end
-    return lines, hls
+    return lines, hls, hitboxes
 end
 
 return M

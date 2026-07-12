@@ -83,6 +83,11 @@ require("lvim-calendar").pick({ -- date-picker for another plugin's form
 | `i` | create an entry on the cursor day (source `on_create`; a chooser when several can) |
 | `q` / `<Esc>` | close |
 
+**Mouse:** left-click a day in the grid (month / quarter / year views) to land the cursor on it,
+exactly as the arrow keys do — the click fires the same day-change (preview event, repaint). In the
+agenda, click an entry row to select it. The header filter / span / nav bands and the footer actions
+are click targets too (via the lvim-ui bar). A click is a no-op while `'mouse'` is empty.
+
 The header carries the view filter band, the agenda span band, and a `‹ Month Year ›` / `today`
 nav band — the month-year button opens a quick-jump (month picker, then year prompt). `<C-j>` /
 `<C-k>` move between the bands, the grid and the footer (the chassis sectors).

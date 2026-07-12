@@ -59,6 +59,7 @@ local SPAN_BUTTONS = {
 ---@field cursor LvimCalendarDate      the cell cursor
 ---@field active integer               active agenda entry index (0 = none)
 ---@field items LvimCalendarAgendaItem[]  agenda selectables of the LAST render
+---@field hitboxes? table[]             per-day mouse click targets of the LAST grid render (see flatten)
 ---@field cursor_row integer           output row of the cell cursor (scroll target)
 ---@field on_select? fun(date: string) consumer callback (nil = insert into the origin buffer)
 ---@field unsubscribe? fun()           sources.on_update teardown
@@ -71,6 +72,7 @@ local state = {
     cursor = model.today(),
     active = 0,
     items = {},
+    hitboxes = {},
     cursor_row = 1,
     on_select = nil,
     unsubscribe = nil,
@@ -693,7 +695,36 @@ function M.open(opts)
             local block, items = build(width)
             state.items = items
             state.cursor_row = block.cursor_row or 1
-            return grid.flatten(block.rows)
+            local lines, hls, hitboxes = grid.flatten(block.rows)
+            state.hitboxes = hitboxes -- per-day click targets of THIS render (grid views); nil-ish for agenda
+            return lines, hls
+        end,
+        -- MOUSE: a left-click lands on a day exactly as the arrow keys + confirm do. The chassis has already
+        -- moved the (hidden) cursor to the clicked cell and passes the 1-based `line` + 0-based byte `col`.
+        -- Grid views hit-test the day HITBOXES flatten emitted (the day's own byte span → its ISO date →
+        -- `move_cursor`); the agenda hit-tests its selectable ITEM rows (row ↔ entry) and selects that entry.
+        -- No-op off any day / entry; `move_cursor` self-repaints + fires the LvimCalendarDay preview event.
+        ---@param _pan table
+        ---@param _st table
+        ---@param line integer  1-based clicked buffer row
+        ---@param col integer   0-based clicked byte column
+        on_click = function(_pan, _st, line, col)
+            if state.view == "agenda" then
+                for i, it in ipairs(state.items or {}) do
+                    if it.row == line then
+                        state.active = i
+                        move_cursor(model.from_string(it.entry.date))
+                        return
+                    end
+                end
+                return
+            end
+            for _, hb in ipairs(state.hitboxes or {}) do
+                if hb.row == line - 1 and col >= hb.c0 and col < hb.c1 then
+                    move_cursor(model.from_string(hb.date))
+                    return
+                end
+            end
         end,
         keys = function(_, pan)
             state.pan = pan
