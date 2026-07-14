@@ -881,7 +881,11 @@ function M.open(opts)
             height = { auto = true, max = 0.9 },
         } or nil,
         header = header_spec(),
-        content = { blocks = { { id = "calendar", provider = provider, border = config.content_border } } },
+        content = {
+            blocks = {
+                { id = "calendar", provider = provider, border = config.content_border or surface.CONTENT_BORDER },
+            },
+        },
         footer = footer_spec(),
         keymaps = keymaps_spec(),
         on_close = function()

@@ -100,10 +100,11 @@ return {
         create = "i",
         help = "g?", -- the set-wide cheatsheet chord (the panel owns the `g` prefix — see lvim-ui)
     },
-    -- The CONTENT block's border — a blank " " ring by default: the calendar grid needs air around it, and a
-    -- border is geometry (the frame draws it), not padding baked into the rendered rows. Any lvim-ui border
-    -- spec works ("none", a preset name, or an 8-item ring).
-    content_border = { " ", " ", " ", " ", " ", " ", " ", " " },
+    -- The CONTENT block's border. Left UNSET so the grid inherits the SHARED content ring (`lvim-ui.config`
+    -- `content_border` — the blank " " ring), like every other content panel; the frame derives its air rows
+    -- from whatever ring is in effect, so the spacing above and below the grid stays symmetric either way.
+    -- Set it to any lvim-ui border spec ("none", a preset name, or an 8-item ring) to override it here.
+    content_border = nil,
 
     -- The AGENDA's row striping. Every row is one accent: the body box wears it as a wash at `tint`, and the
     -- row under the cursor rises to `active_tint` so it reads as one solid block. `lead` is the strength of
