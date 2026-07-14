@@ -1,7 +1,7 @@
 -- lvim-calendar.views.year: 12 compact mini-months in a responsive grid — 4 columns when the
 -- editor is wide enough, 3 otherwise (the panel re-asks on every build, so a resize relayouts).
 -- Mini-month cells are 3-wide (`17•`) with marks collapsed to the dot; a centered year heading
--- tops the block. <CR> on this view zooms into the month view (handled by the panel).
+-- tops the block. <CR> picks the day under the cursor, exactly as in the month / quarter views.
 --
 ---@module "lvim-calendar.views.year"
 
@@ -28,6 +28,7 @@ end
 function M.build(ctx, cols)
     ctx.compact = true
     ctx.heading = "month"
+    ctx.week_numbers = false -- a mini-month has no room for a week column
     local band_rows = {}
     local m = 1
     while m <= 12 do

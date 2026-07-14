@@ -26,7 +26,7 @@
 ---@field prev_mark string       Jump to the previous decorated day
 ---@field goto_date string       Prompt for a date (absolute or +3d/-2w/+1m relative) — a `g` CHORD, never a bare `g`
 ---@field cycle_view string      Cycle month → quarter → year → agenda
----@field select string          Confirm the cursor day (callback/insert; agenda: open the entry; year: zoom)
+---@field select string          Confirm the cursor day in every grid view (callback/insert; agenda: open the entry)
 ---@field create string          Create an entry on the cursor day (source `on_create`)
 ---@field help string            Open the keymap cheatsheet (the set-wide `g?` chord)
 
@@ -41,6 +41,7 @@
 ---@field layout "float"|"area"|"bottom"          Default panel layout (per-open override wins)
 ---@field first_day "monday"|"sunday"             First column of the week grid
 ---@field week_numbers boolean                    Show ISO week numbers left of each grid row
+---@field agenda_colors table                     Agenda striping: { odd, even, header, tint, active_tint, lead }
 ---@field insert_format string                    os.date format used when a selected day is inserted
 ---@field agenda LvimCalendarAgendaConfig         Agenda view defaults
 ---@field holidays table[]                        Built-in `holidays` source input (see sources.lua)
@@ -98,6 +99,19 @@ return {
     -- border is geometry (the frame draws it), not padding baked into the rendered rows. Any lvim-ui border
     -- spec works ("none", a preset name, or an 8-item ring).
     content_border = { " ", " ", " ", " ", " ", " ", " ", " " },
+
+    -- The AGENDA's row striping. Every row is one accent: the body box wears it as a wash at `tint`, and the
+    -- row under the cursor rises to `active_tint` so it reads as one solid block. `lead` is the strength of
+    -- the SOURCE box in front of the row (it carries the source's own accent + icon). They were literals
+    -- (0.2 / 0.4 / 0.4) — loud enough to fight the text they sit under.
+    agenda_colors = {
+        odd = "blue",
+        even = "yellow",
+        header = "blue",
+        tint = 0.05,
+        active_tint = 0.1,
+        lead = 0.1,
+    },
 
     icons = {
         title = "󰃭",

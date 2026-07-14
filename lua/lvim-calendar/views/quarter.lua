@@ -17,7 +17,7 @@ local GAP = 4
 ---@param ctx LvimCalendarGridCtx
 ---@return LvimCalendarBlock
 function M.build(ctx)
-    ctx.compact = false
+    ctx.compact = true -- the same compact grid as the month / year views
     ctx.heading = "full"
     local anchor = { y = ctx.cursor.y, m = ctx.cursor.m, d = 1 }
     local prev = model.shift_months(anchor, -1)

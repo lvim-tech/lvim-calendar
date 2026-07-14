@@ -40,6 +40,22 @@ end
 --- All calendar groups from the live palette (bound via hl.bind in setup).
 ---@return table<string, table>
 function M.build()
+    -- The agenda's accents + strengths come from the live config (never literals here).
+    local ag = require("lvim-calendar.config").agenda_colors or {}
+    ag.tint = ag.tint or 0.05
+    ag.active_tint = ag.active_tint or 0.1
+    ag.lead = ag.lead or 0.1
+    --- Resolve an accent NAME from the palette (or a literal "#rrggbb").
+    ---@param v string?
+    ---@param fallback string
+    ---@return string
+    local function ac(v, fallback)
+        v = v or fallback
+        if v:sub(1, 1) == "#" then
+            return v
+        end
+        return c[v] or c[fallback] or c.blue
+    end
     local groups = {
         LvimCalendarHeading = { fg = c.blue, bold = true },
         LvimCalendarWeekday = { fg = c.comment },
@@ -52,19 +68,19 @@ function M.build()
         LvimCalendarCursor = { fg = c.yellow, bg = mtint(c.yellow, 0.4), bold = true },
         -- generic decorated-day fallback (an entry whose source vanished / a bare `hl` miss)
         LvimCalendarMark = { fg = c.green, bg = mtint(c.green, 0.25) },
-        LvimCalendarAgendaHeader = { fg = c.blue, bold = true },
+        LvimCalendarAgendaHeader = { fg = ac(ag.header, "blue"), bold = true },
         LvimCalendarAgendaTime = { fg = c.comment },
-        -- agenda body boxes: odd rows blue / even rows yellow at 0.2; the active row at 0.4
-        LvimCalendarAgendaRowB = { fg = c.blue, bg = mtint(c.blue, 0.2) },
-        LvimCalendarAgendaRowActiveB = { fg = c.blue, bg = mtint(c.blue, 0.4) },
-        LvimCalendarAgendaRowY = { fg = c.yellow, bg = mtint(c.yellow, 0.2) },
-        LvimCalendarAgendaRowActiveY = { fg = c.yellow, bg = mtint(c.yellow, 0.4) },
+        -- agenda body boxes — accents + strengths from `config.agenda_colors` (never literals)
+        LvimCalendarAgendaRowB = { fg = ac(ag.odd, "blue"), bg = mtint(ac(ag.odd, "blue"), ag.tint) },
+        LvimCalendarAgendaRowActiveB = { fg = ac(ag.odd, "blue"), bg = mtint(ac(ag.odd, "blue"), ag.active_tint) },
+        LvimCalendarAgendaRowY = { fg = ac(ag.even, "yellow"), bg = mtint(ac(ag.even, "yellow"), ag.tint) },
+        LvimCalendarAgendaRowActiveY = { fg = ac(ag.even, "yellow"), bg = mtint(ac(ag.even, "yellow"), ag.active_tint) },
         LvimCalendarEmpty = { fg = c.comment, italic = true },
     }
     for suffix, accent in pairs(src_accents) do
         local col = c[accent] or c.green
         groups["LvimCalendarMark" .. suffix] = { fg = col, bg = mtint(col, 0.25) }
-        groups["LvimCalendarLead" .. suffix] = { fg = col, bg = mtint(col, 0.4), bold = true }
+        groups["LvimCalendarLead" .. suffix] = { fg = col, bg = mtint(col, ag.lead), bold = true }
     end
     return groups
 end
@@ -81,7 +97,8 @@ function M.source_group(name, accent)
     src_accents[suffix] = accent
     local col = c[accent] or c.green
     hl.define("LvimCalendarMark" .. suffix, { fg = col, bg = mtint(col, 0.25) })
-    hl.define("LvimCalendarLead" .. suffix, { fg = col, bg = mtint(col, 0.4), bold = true })
+    local agl = (require("lvim-calendar.config").agenda_colors or {}).lead or 0.1
+    hl.define("LvimCalendarLead" .. suffix, { fg = col, bg = mtint(col, agl), bold = true })
     return "LvimCalendarMark" .. suffix
 end
 

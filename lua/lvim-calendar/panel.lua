@@ -33,12 +33,18 @@ local M = {}
 ---@type string[]  the `v` cycle order
 local VIEW_ORDER = { "month", "quarter", "year", "agenda" }
 
--- Filter-band hotkeys avoid the taken keys: `q` closes (chassis close_keys) so Quarter gets `Q`;
--- `m` is free in every view; the span group avoids `w` (next mark) and `m` with `W`/`M`.
+---@type integer  columns the frame's own chrome eats (the content border + the panel gutter)
+local CHROME_COLS = 6
+---@type integer  rows the frame always draws around the content (title, view band, nav band, footer, air)
+local CHROME_ROWS = 8
+
+-- Filter-band hotkeys avoid the taken keys. Quarter takes the `u` of Q[u]arter, NOT `Q`: `q` closes the
+-- panel, so a capital `Q` right beside it reads as "the same key, shifted" and is a trap. `m` is free in
+-- every view; the span group avoids `w` (next mark) and `m` with `W`/`M`.
 ---@type table[]
 local VIEW_BUTTONS = {
     { id = "month", label = "Month", key = "m" },
-    { id = "quarter", label = "Quarter", key = "Q" },
+    { id = "quarter", label = "Quarter", key = "u" },
     { id = "year", label = "Year", key = "y" },
     { id = "agenda", label = "Agenda", key = "a" },
 }
@@ -131,13 +137,31 @@ local function build(width)
         first_day = config.first_day,
         week_numbers = config.week_numbers,
     }
-    if state.view == "month" then
-        return view_month.build(ctx), {}
-    elseif state.view == "year" then
-        -- responsive: the float caps at 0.9 editor width minus the border gutter
-        return view_year.build(ctx, view_year.columns(math.floor(vim.o.columns * 0.9) - 4)), {}
+    -- RESPONSIVE: build the requested view and, when the screen cannot host it, fall back to the next
+    -- smaller one (year → quarter → month) rather than letting the frame clip the top off — a clipped year
+    -- view loses its heading row and the first row of month names, which is what "the months have no titles"
+    -- actually was. The screen budget is the frame's own cap (0.9) minus the chrome rows it always draws.
+    local avail_w = math.floor(vim.o.columns * 0.9) - CHROME_COLS
+    local avail_h = math.floor(vim.o.lines * 0.9) - CHROME_ROWS
+    local order = { year = "quarter", quarter = "month" } -- what each view degrades INTO
+    local view = state.view
+    local block
+    while true do
+        if view == "month" then
+            block = view_month.build(ctx)
+        elseif view == "year" then
+            block = view_year.build(ctx, view_year.columns(avail_w))
+        else
+            block = view_quarter.build(ctx)
+        end
+        local next_view = order[view]
+        if not next_view or (block.width <= avail_w and #block.rows <= avail_h) then
+            break
+        end
+        view = next_view
     end
-    return view_quarter.build(ctx), {}
+    state.rendered_view = view -- what is ACTUALLY on screen (the header band shows it)
+    return block, {}
 end
 
 -- ── repaint ──────────────────────────────────────────────────────────────────
@@ -146,10 +170,35 @@ end
 --- in a height-capped docked layout).
 local function scroll()
     local pan = state.pan
-    if pan and pan.win and api.nvim_win_is_valid(pan.win) and pan.buf and api.nvim_buf_is_valid(pan.buf) then
-        local row = math.max(1, math.min(state.cursor_row or 1, api.nvim_buf_line_count(pan.buf)))
-        pcall(api.nvim_win_set_cursor, pan.win, { row, 0 })
+    if not (pan and pan.win and api.nvim_win_is_valid(pan.win) and pan.buf and api.nvim_buf_is_valid(pan.buf)) then
+        return
     end
+    local n = api.nvim_buf_line_count(pan.buf)
+    local row = math.max(1, math.min(state.cursor_row or 1, n))
+    pcall(api.nvim_win_set_cursor, pan.win, { row, 0 })
+    -- Keep the WHOLE month that holds the cursor on screen. Parking the cursor is not enough: Neovim scrolls
+    -- the minimum needed, so a date in the bottom band of the year view lands on the last visible row and the
+    -- rest of its month sits below the fold. Scroll so the block's LAST row is visible too (and, when the
+    -- block is taller than the window, at least start at its top).
+    local last = state.cursor_last
+    if not last then
+        return
+    end
+    api.nvim_win_call(pan.win, function()
+        local h = api.nvim_win_get_height(pan.win)
+        local view = vim.fn.winsaveview()
+        local top = view.topline
+        if last > top + h - 1 then
+            top = math.max(1, math.min(last - h + 1, n))
+        end
+        if row < top then
+            top = row
+        end
+        if top ~= view.topline then
+            view.topline = top
+            vim.fn.winrestview(view)
+        end
+    end)
 end
 
 local header_spec -- forward declaration (repaint ↔ band builders are mutually recursive)
@@ -273,7 +322,7 @@ local function hop(dir)
     end
 end
 
---- Switch the active view (filter band / `v` cycle / the year-view zoom).
+--- Switch the active view (the filter band, or the `v` cycle).
 ---@param v string
 local function set_view(v)
     if v == state.view or not vim.tbl_contains(VIEW_ORDER, v) then
@@ -353,8 +402,13 @@ local function quick_jump()
     for i, name in ipairs(model.MONTHS) do
         items[i] = { label = name }
     end
+    -- Both popups return focus to the PANEL, not to "whatever window was current when they opened": the year
+    -- input is created from the month picker's callback, i.e. while that picker is tearing down, so without an
+    -- explicit origin the chain ends by dumping the cursor into the editor behind the calendar.
+    local home = state.pan and state.pan.win
     uilib.select({
         title = "MONTH",
+        origin = home,
         items = items,
         current_item = items[state.cursor.m],
         mark_current = false,
@@ -364,6 +418,7 @@ local function quick_jump()
             end
             uilib.input({
                 title = "YEAR",
+                origin = home,
                 default = tostring(state.cursor.y),
                 callback = function(ok, value)
                     if not ok then
@@ -383,15 +438,13 @@ end
 
 -- ── actions ──────────────────────────────────────────────────────────────────
 
---- <CR>: year view zooms into the month; agenda opens the active entry (source `on_open`, else
---- edit file/line); grid views confirm the cursor day — the consumer callback when one was passed,
---- else the classic default: insert the formatted date into the origin buffer.
+--- <CR>: every GRID view confirms the cursor day — the consumer callback when one was passed, else the
+--- classic default: insert the formatted date into the origin buffer. The year view used to ZOOM into the
+--- month instead (a second keystroke before you could pick anything); a day is a day in every view, and the
+--- cursor already sits on one, so Enter picks it. The agenda opens the active entry (source `on_open`, else
+--- edit file/line).
 local function do_select()
     if not M.is_open() then
-        return
-    end
-    if state.view == "year" then
-        set_view("month")
         return
     end
     if state.view == "agenda" then
@@ -642,58 +695,66 @@ local function keymaps_spec()
     local function add(key, fn)
         maps[#maps + 1] = { key = key, run = fn }
     end
-    add(k.prev_day, function()
+    --- A key that manipulates the GRID (the day cursor, the selection). `scope = "panel"` keeps it OFF the
+    --- container, where the bars live: on a focused bar `h`/`l` belong to its button selection and `<CR>` to
+    --- firing the button — binding the day cursor over them makes the bands unusable.
+    ---@param key string|string[]
+    ---@param fn fun()
+    local function add_cell(key, fn)
+        maps[#maps + 1] = { key = key, run = fn, scope = "panel" }
+    end
+    add_cell(k.prev_day, function()
         move_cursor(model.shift_days(state.cursor, -1))
     end)
-    add(k.next_day, function()
+    add_cell(k.next_day, function()
         move_cursor(model.shift_days(state.cursor, 1))
     end)
-    add(k.next_week, function()
+    add_cell(k.next_week, function()
         if state.view == "agenda" then
             agenda_move(1)
         else
             move_cursor(model.shift_days(state.cursor, 7))
         end
     end)
-    add(k.prev_week, function()
+    add_cell(k.prev_week, function()
         if state.view == "agenda" then
             agenda_move(-1)
         else
             move_cursor(model.shift_days(state.cursor, -7))
         end
     end)
-    add(k.prev_month, function()
+    add_cell(k.prev_month, function()
         move_cursor(model.shift_months(state.cursor, -1))
     end)
-    add(k.next_month, function()
+    add_cell(k.next_month, function()
         move_cursor(model.shift_months(state.cursor, 1))
     end)
-    add(k.next_year, function()
+    add_cell(k.next_year, function()
         move_cursor(model.shift_years(state.cursor, 1))
     end)
-    add(k.prev_year, function()
+    add_cell(k.prev_year, function()
         move_cursor(model.shift_years(state.cursor, -1))
     end)
-    add(k.week_start, function()
+    add_cell(k.week_start, function()
         move_cursor(model.week_start(state.cursor, config.first_day))
     end)
-    add(k.week_end, function()
+    add_cell(k.week_end, function()
         move_cursor(model.shift_days(model.week_start(state.cursor, config.first_day), 6))
     end)
     add(k.today, function()
         move_cursor(model.today())
     end)
-    add(k.next_mark, function()
+    add_cell(k.next_mark, function()
         hop(1)
     end)
-    add(k.prev_mark, function()
+    add_cell(k.prev_mark, function()
         hop(-1)
     end)
     add(k.goto_date, goto_date)
     add(k.help, show_help)
     add(k.cycle_view, cycle_view)
-    add(k.select, do_select)
-    add(k.create, create_entry)
+    add_cell(k.select, do_select)
+    add_cell(k.create, create_entry)
     -- direct filter hotkeys (canon §5) — bound here, not via the chassis' open-time map_hotkeys,
     -- so the agenda span keys exist even when that band appears later via set_header
     for _, b in ipairs(VIEW_BUTTONS) do
@@ -757,6 +818,10 @@ function M.open(opts)
             local block, items = build(width)
             state.items = items
             state.cursor_row = block.cursor_row or 1
+            state.cursor_last = block.cursor_last
+            -- The grid is CENTRED in the panel: the block's natural width is the calendar's, the panel's is
+            -- the frame's, and a grid hugging the left edge of a wide panel reads as broken.
+            block = grid.center_block(block, width)
             local lines, hls, hitboxes = grid.flatten(block.rows)
             state.hitboxes = hitboxes -- per-day click targets of THIS render (grid views); nil-ish for agenda
             return lines, hls
@@ -774,8 +839,12 @@ function M.open(opts)
             if state.view == "agenda" then
                 for i, it in ipairs(state.items or {}) do
                     if it.row == line then
+                        -- A click ACTIVATES the row, like a click in the file tree opens the file: it selects
+                        -- the entry AND opens it. Selecting only (the old behaviour) left the click looking
+                        -- dead — the row is already under the pointer, so "select it" is not an outcome.
                         state.active = i
                         move_cursor(model.from_string(it.entry.date))
+                        do_select()
                         return
                     end
                 end

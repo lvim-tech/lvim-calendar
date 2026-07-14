@@ -12,7 +12,9 @@ local M = {}
 ---@param ctx LvimCalendarGridCtx
 ---@return LvimCalendarBlock
 function M.build(ctx)
-    ctx.compact = false
+    -- COMPACT cells (3-wide, flush) — the same grid the year view draws. A single month rendered with
+    -- 4-wide boxes and 1-space gaps reads as "stretched" beside them.
+    ctx.compact = true
     ctx.heading = "full"
     return grid.month_block(ctx.cursor.y, ctx.cursor.m, ctx)
 end

@@ -92,8 +92,8 @@ quarter~
 
 year~
     12 compact mini-months in a responsive grid (4 columns when the editor
-    is wide enough, else 3). Marks collapse to a dot. <CR> zooms into the
-    month view on the cursor month.
+    is wide enough, else 3). Marks collapse to a dot. <CR> picks the day
+    under the cursor, exactly as in the month and quarter views.
 
 agenda~
     A date-anchored entry list over a span (day / week / fortnight / month;
@@ -122,7 +122,7 @@ CTRL-J / CTRL-K move between the bands, the grid and the footer.
     v                cycle month → quarter → year → agenda
     m Q y a          switch the view directly
     d W f M          agenda span: day / week / fortnight / month
-    <CR>             confirm the day / open the entry / zoom the year cell
+    <CR>             confirm the day (every grid view) / open the agenda entry
     i                create an entry (source on_create; chooser when many)
     q / <Esc>        close
 

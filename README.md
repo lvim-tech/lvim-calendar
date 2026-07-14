@@ -9,7 +9,7 @@ stable source API so org- and markdown-note systems plug in without touching cal
 - **month** — one full month grid.
 - **quarter** (default) — previous / **current** / next month side by side; navigating past an
   edge re-centers the strip, exactly like Emacs re-scrolls.
-- **year** — 12 mini-months in a responsive 3×4 / 4×3 grid; `<CR>` on a month zooms into it.
+- **year** — 12 mini-months in a responsive 3×4 / 4×3 grid; `<CR>` picks the day under the cursor, like every other grid view.
 - **agenda** — a date-anchored entry list over a `day/week/fortnight/month` span (the org-agenda
   shape); `<CR>` jumps to the entry's `file:line` (or calls the source's `on_open`).
 
@@ -79,7 +79,7 @@ require("lvim-calendar").pick({ -- date-picker for another plugin's form
 | `v` | cycle month → quarter → year → agenda |
 | `m` `Q` `y` `a` | switch view directly (the header filter band) |
 | `d` `W` `f` `M` | agenda span: day / week / fortnight / month |
-| `<CR>` | confirm the day (callback / insert); agenda: open the entry; year: zoom into the month |
+| `<CR>` | confirm the day (callback / insert) in EVERY grid view; agenda: open the entry |
 | `i` | create an entry on the cursor day (source `on_create`; a chooser when several can) |
 | `g?` | the keymap **cheatsheet** (also a `help` chip on the footer bar) |
 | `q` / `<Esc>` | close |

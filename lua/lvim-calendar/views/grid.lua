@@ -24,6 +24,7 @@ local M = {}
 ---@field rows LvimCalendarSpan[][]
 ---@field width integer
 ---@field cursor_row? integer  1-based row of the cursor cell within the block, when it holds it
+---@field cursor_last? integer  the LAST row of the block holding the cursor (keep the whole month on screen)
 
 ---@class LvimCalendarGridCtx
 ---@field cursor LvimCalendarDate
@@ -89,8 +90,10 @@ function M.month_block(y, m, ctx)
     local compact = ctx.compact == true
     local cellw = compact and 3 or 4
     local gap = compact and 0 or 1
-    local weeknums = ctx.week_numbers and not compact
-    local wn_w = weeknums and 4 or 0
+    -- Week numbers are a CONTENT choice (`week_numbers`), not a cell-shape one: a compact grid keeps them,
+    -- just in a tighter column. Only the year view opts out (its mini-months carry no week column).
+    local weeknums = ctx.week_numbers == true
+    local wn_w = weeknums and (compact and 3 or 4) or 0
     local width = wn_w + 7 * cellw + 6 * gap
 
     local rows = {}
@@ -149,7 +152,10 @@ function M.month_block(y, m, ctx)
         rows[#rows + 1] = row
     end
 
-    return { rows = rows, width = width, cursor_row = cursor_row }
+    -- `cursor_last` = the block's LAST row when this block holds the cursor. The panel scrolls to keep the
+    -- WHOLE month visible, not just the cursor's line: landing on a date in the bottom band of the year view
+    -- otherwise parks that line on the last screen row and cuts the rest of its month off.
+    return { rows = rows, width = width, cursor_row = cursor_row, cursor_last = cursor_row and #rows or nil }
 end
 
 --- Join blocks SIDE BY SIDE with `gap` spaces between them; shorter blocks are padded with blank
@@ -160,6 +166,7 @@ end
 ---@return LvimCalendarBlock
 function M.hjoin(blocks, gap)
     local nrows, width = 0, 0
+    local cursor_last = nil
     for i, b in ipairs(blocks) do
         nrows = math.max(nrows, #b.rows)
         width = width + b.width + (i > 1 and gap or 0)
@@ -187,11 +194,12 @@ function M.hjoin(blocks, gap)
             end
             if b.cursor_row == r then
                 cursor_row = r
+                cursor_last = b.cursor_last
             end
         end
         rows[#rows + 1] = row
     end
-    return { rows = rows, width = width, cursor_row = cursor_row }
+    return { rows = rows, width = width, cursor_row = cursor_row, cursor_last = cursor_last }
 end
 
 --- Stack blocks VERTICALLY with one blank row between them, tracking the cursor row through the
@@ -202,6 +210,7 @@ function M.vjoin(blocks)
     local rows = {}
     local width = 0
     local cursor_row = nil
+    local cursor_last = nil
     for i, b in ipairs(blocks) do
         if i > 1 then
             rows[#rows + 1] = { { text = "" } }
@@ -212,10 +221,11 @@ function M.vjoin(blocks)
         end
         if b.cursor_row then
             cursor_row = off + b.cursor_row
+            cursor_last = b.cursor_last and (off + b.cursor_last) or nil
         end
         width = math.max(width, b.width)
     end
-    return { rows = rows, width = width, cursor_row = cursor_row }
+    return { rows = rows, width = width, cursor_row = cursor_row, cursor_last = cursor_last }
 end
 
 --- Flatten span rows into the surface provider's `lines, hls` shape, plus per-day mouse `hitboxes`. THE
@@ -226,6 +236,29 @@ end
 --- against — the box's own rendered byte span, so the click maps precisely to that day and no other.
 ---@param rows LvimCalendarSpan[][]
 ---@return string[] lines, table[] hls, table[] hitboxes
+--- Centre a block inside `width`: every row gets the same left pad, so the grid sits in the middle of the
+--- panel instead of hugging its left edge. A block WIDER than the panel is returned untouched (the frame
+--- clips / the view degrades — see the panel's fit logic).
+---@param block LvimCalendarBlock
+---@param width integer  the panel's content width
+---@return LvimCalendarBlock
+function M.center_block(block, width)
+    local pad = math.floor((width - block.width) / 2)
+    if pad <= 0 then
+        return block
+    end
+    local lead = string.rep(" ", pad)
+    local rows = {}
+    for i, row in ipairs(block.rows) do
+        local out = { { text = lead } }
+        for _, span in ipairs(row) do
+            out[#out + 1] = span
+        end
+        rows[i] = out
+    end
+    return { rows = rows, width = width, cursor_row = block.cursor_row, cursor_last = block.cursor_last }
+end
+
 function M.flatten(rows)
     local lines, hls, hitboxes = {}, {}, {}
     for r, row in ipairs(rows) do
