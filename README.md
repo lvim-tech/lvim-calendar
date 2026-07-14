@@ -154,7 +154,10 @@ require("lvim-calendar").setup({
     layout = "float", -- "float" | "area" | "bottom" (per-command override is session-sticky)
     first_day = "monday", -- "monday" | "sunday"
     week_numbers = false, -- ISO week numbers left of each grid row
-    insert_format = "%Y-%m-%d", -- os.date format for the default <CR> insert
+    insert_format = "%Y-%m-%d",
+    -- What the GOTO prompt accepts (shown IN the prompt and repeated in its error). The separator is free
+    -- (`.` `-` `/` or a space) and the 4-digit year decides the order: `1973.12.22` and `22 12 2021` both work.
+    goto_hint = "2026-07-06 · 22.12.2021 · 6.7 · +3d · -2w · +1m · -1y · t", -- os.date format for the default <CR> insert
     agenda = {
         span = "week", -- "day" | "week" | "fortnight" | "month"
         show_empty = false, -- show day sections without entries

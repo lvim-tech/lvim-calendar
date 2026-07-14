@@ -380,7 +380,9 @@ end
 --- +3d/-2w/+1m/-1y relative offsets, empty/t = today).
 local function goto_date()
     uilib.input({
-        title = "GOTO DATE",
+        -- The accepted formats are IN the title: a prompt that only says "GOTO DATE" makes you guess, and the
+        -- guess is what the old error rejected without ever saying what it wanted.
+        title = "GOTO DATE  —  " .. config.goto_hint,
         default = "",
         callback = function(confirmed, value)
             if not confirmed then
@@ -390,7 +392,10 @@ local function goto_date()
             if d then
                 move_cursor(d)
             else
-                vim.notify("lvim-calendar: cannot parse date: " .. tostring(value), vim.log.levels.WARN)
+                vim.notify(
+                    ("lvim-calendar: %q is not a date. Accepted: %s"):format(tostring(value), config.goto_hint),
+                    vim.log.levels.WARN
+                )
             end
         end,
     })

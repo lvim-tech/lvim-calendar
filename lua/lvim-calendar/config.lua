@@ -43,6 +43,7 @@
 ---@field week_numbers boolean                    Show ISO week numbers left of each grid row
 ---@field agenda_colors table                     Agenda striping: { odd, even, header, tint, active_tint, lead }
 ---@field insert_format string                    os.date format used when a selected day is inserted
+---@field goto_hint string                        the accepted GOTO formats, shown in the prompt and the error
 ---@field agenda LvimCalendarAgendaConfig         Agenda view defaults
 ---@field holidays table[]                        Built-in `holidays` source input (see sources.lua)
 ---@field dates table[]                           Built-in `dates` source input (see sources.lua)
@@ -58,6 +59,10 @@ return {
     -- Format handed to os.date() when a selected day is INSERTED into the buffer the calendar
     -- was opened from (the default <CR> action when no on_select callback was passed).
     insert_format = "%Y-%m-%d",
+    -- What the GOTO prompt accepts, spelled out — it is shown IN the prompt and repeated in the error, so a
+    -- rejected input tells you what would have worked instead of just refusing. Keep it in sync with
+    -- `model.parse_goto` (the separator is free: `.` `-` `/` or a space; the 4-digit year decides the order).
+    goto_hint = "2026-07-06 · 22.12.2021 · 6.7 · +3d · -2w · +1m · -1y · t",
     agenda = {
         span = "week",
         show_empty = false,

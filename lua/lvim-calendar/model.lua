@@ -298,25 +298,21 @@ end
 
 -- ── the goto-date parser ─────────────────────────────────────────────────────
 
---- Parse a goto-date prompt string relative to `base`. Accepted forms:
----   "2026-07-06"          absolute ISO
----   "06.07" / "6.7"        day.month of the base year
----   "06.07.2026"           day.month.year
----   "+3d" / "-2w" / "+1m" / "-1y"   relative offset in days/weeks/months/years
----   "" / "t"               today
+--- Parse a goto-date prompt string relative to `base`. The SEPARATOR is free — `.`, `-`, `/` or a space —
+--- and the order is inferred from where the 4-digit YEAR sits (a bare `22 12 2021` and `1973.12.22` are both
+--- unambiguous, and both used to be rejected):
+---   "2026-07-06" · "1973.12.22" · "2026/7/6"     year first  → Y M D
+---   "06.07.2026" · "22 12 2021" · "6/7/2026"     year last   → D M Y
+---   "06.07" · "6.7" · "6 7"                      no year     → D M of the base year
+---   "+3d" / "-2w" / "+1m" / "-1y"                relative offset in days/weeks/months/years
+---   "" / "t" / "today"                           today
 --- Returns nil for anything unparseable or an impossible date.
----@param input string
----@param base LvimCalendarDate
----@return LvimCalendarDate?
 function M.parse_goto(input, base)
-    local s = vim.trim(input or "")
+    -- Case-insensitive: the prompt's title is UPPERCASED by the frame (the set's title canon), so a user who
+    -- copies the hint types `+3D` — it must mean the same as `+3d`.
+    local s = vim.trim(input or ""):lower()
     if s == "" or s == "t" or s == "today" then
         return M.today()
-    end
-    -- absolute ISO
-    local abs = M.from_string(s)
-    if abs then
-        return abs
     end
     -- relative: sign + count + unit
     local sign, count, unit = s:match("^([+-])(%d+)([dwmy])$")
@@ -334,16 +330,22 @@ function M.parse_goto(input, base)
         end
         return M.shift_years(base, n)
     end
-    -- day.month[.year] (the European short form)
-    local d, m, y = s:match("^(%d%d?)%.(%d%d?)%.(%d%d%d%d)$")
-    if not d then
-        d, m = s:match("^(%d%d?)%.(%d%d?)$")
-        y = tostring(base.y)
+    -- numeric forms: split on ANY of `. - / space`, then read the order off the 4-digit year
+    local parts = {}
+    for tok in s:gmatch("%d+") do
+        parts[#parts + 1] = tok
     end
-    if d then
-        local dd, mm, yy = tonumber(d), tonumber(m), tonumber(y)
-        if dd and mm and yy and mm >= 1 and mm <= 12 and dd >= 1 and dd <= M.days_in_month(yy, mm) then
-            return { y = yy, m = mm, d = dd }
+    if s:match("^[%d%.%-/%s]+$") and (#parts == 2 or #parts == 3) then
+        local y, m, d
+        if #parts == 2 then
+            d, m, y = tonumber(parts[1]), tonumber(parts[2]), base.y -- day month, base year
+        elseif #parts[1] == 4 then
+            y, m, d = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3]) -- year first
+        elseif #parts[3] == 4 then
+            d, m, y = tonumber(parts[1]), tonumber(parts[2]), tonumber(parts[3]) -- year last
+        end
+        if y and m and d and m >= 1 and m <= 12 and d >= 1 and d <= M.days_in_month(y, m) then
+            return { y = y, m = m, d = d }
         end
     end
     return nil
