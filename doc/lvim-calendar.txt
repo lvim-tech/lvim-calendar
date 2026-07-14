@@ -60,8 +60,9 @@ sources and the |:LvimCalendar| command. The full defaults: >lua
             week_start = "0", week_end = "$",
             today = { "t", "." },
             next_mark = "w",  prev_mark = "b",
-            goto_date = "g",  cycle_view = "v",
+            goto_date = "gd", cycle_view = "v",
             select = "<CR>",  create = "i",
+            help = "g?",      -- the keymap CHEATSHEET
         },
         icons = {
             title = "󰃭",      -- panel border-title glyph
@@ -115,7 +116,9 @@ CTRL-J / CTRL-K move between the bands, the grid and the footer.
     0 / $            start / end of the cursor week
     t / .            today
     w / b            next / previous decorated day (a day with entries)
-    g                goto date (see below)
+    gd               goto date (see below) — a CHORD under the `g` prefix (a
+                     bare `g` cannot coexist with the `g?` cheatsheet chord)
+    g?               the keymap CHEATSHEET (also a `help` chip on the footer)
     v                cycle month → quarter → year → agenda
     m Q y a          switch the view directly
     d W f M          agenda span: day / week / fortnight / month

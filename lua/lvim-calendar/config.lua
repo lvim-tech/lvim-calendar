@@ -24,10 +24,11 @@
 ---@field today string[]         Jump to today (both keys)
 ---@field next_mark string       Jump to the next decorated day (a day with entries)
 ---@field prev_mark string       Jump to the previous decorated day
----@field goto_date string       Prompt for a date (absolute or +3d/-2w/+1m relative)
+---@field goto_date string       Prompt for a date (absolute or +3d/-2w/+1m relative) — a `g` CHORD, never a bare `g`
 ---@field cycle_view string      Cycle month → quarter → year → agenda
 ---@field select string          Confirm the cursor day (callback/insert; agenda: open the entry; year: zoom)
 ---@field create string          Create an entry on the cursor day (source `on_create`)
+---@field help string            Open the keymap cheatsheet (the set-wide `g?` chord)
 
 ---@class LvimCalendarIconsConfig
 ---@field title string           The panel border-title glyph
@@ -83,11 +84,21 @@ return {
         today = { "t", "." },
         next_mark = "w",
         prev_mark = "b",
-        goto_date = "g",
+        -- `gd` (a CHORD under the `g` prefix), not a bare `g`: the panel also owns `g?` (the set-wide
+        -- cheatsheet chord), and a bare `g` action cannot coexist with a `g…` chord — pressing `g` would
+        -- either fire immediately (killing the chord) or hang on `timeoutlen`. Both live under `g` now, and
+        -- lvim-ui resolves them without any clock.
+        goto_date = "gd",
         cycle_view = "v",
         select = "<CR>",
         create = "i",
+        help = "g?", -- the set-wide cheatsheet chord (the panel owns the `g` prefix — see lvim-ui)
     },
+    -- The CONTENT block's border — a blank " " ring by default: the calendar grid needs air around it, and a
+    -- border is geometry (the frame draws it), not padding baked into the rendered rows. Any lvim-ui border
+    -- spec works ("none", a preset name, or an 8-item ring).
+    content_border = { " ", " ", " ", " ", " ", " ", " ", " " },
+
     icons = {
         title = "󰃭",
         holidays = "",

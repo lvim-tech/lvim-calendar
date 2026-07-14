@@ -2,7 +2,7 @@
 
 A month / quarter / year / agenda calendar for the **lvim-tech** set — the Emacs calendar feature
 model on the canonical lvim-ui chassis. Four views over one date model, Emacs-grade date
-navigation (`h/l` day, `j/k` week, `H/L` month, `J/K` year, `g` goto-date, `w/b` hop between
+navigation (`h/l` day, `j/k` week, `H/L` month, `J/K` year, `gd` goto-date, `w/b` hop between
 decorated days), day **marks** from pluggable **sources** (the diary/holidays mechanism), and a
 stable source API so org- and markdown-note systems plug in without touching calendar code.
 
@@ -75,12 +75,13 @@ require("lvim-calendar").pick({ -- date-picker for another plugin's form
 | `0` / `$` | start / end of the cursor week |
 | `t` / `.` | today |
 | `w` / `b` | next / previous **decorated** day (a day with entries) |
-| `g` | goto date — `2026-07-06`, `06.07`, `6.7.2027`, `+3d`, `-2w`, `+1m`, `-1y` |
+| `gd` | goto date — `2026-07-06`, `06.07`, `6.7.2027`, `+3d`, `-2w`, `+1m`, `-1y` |
 | `v` | cycle month → quarter → year → agenda |
 | `m` `Q` `y` `a` | switch view directly (the header filter band) |
 | `d` `W` `f` `M` | agenda span: day / week / fortnight / month |
 | `<CR>` | confirm the day (callback / insert); agenda: open the entry; year: zoom into the month |
 | `i` | create an entry on the cursor day (source `on_create`; a chooser when several can) |
+| `g?` | the keymap **cheatsheet** (also a `help` chip on the footer bar) |
 | `q` / `<Esc>` | close |
 
 **Mouse:** left-click a day in the grid (month / quarter / year views) to land the cursor on it,
@@ -176,10 +177,13 @@ require("lvim-calendar").setup({
         today = { "t", "." },
         next_mark = "w",
         prev_mark = "b",
-        goto_date = "g",
+        -- `gd` is a CHORD under the `g` prefix, not a bare `g`: the panel also owns `g?` (the cheatsheet),
+        -- and a bare `g` action cannot coexist with a `g…` chord. Both resolve without any timeout.
+        goto_date = "gd",
         cycle_view = "v",
         select = "<CR>",
         create = "i",
+        help = "g?", -- the keymap CHEATSHEET (also a `help` chip on the footer bar)
     },
     icons = {
         title = "󰃭", -- panel border-title glyph

@@ -540,23 +540,84 @@ header_spec = function()
     return { bars = bars }
 end
 
+-- ── the help window (the canonical cheatsheet) ───────────────────────────────
+
+-- Key id → description, in display order. Built from the LIVE `config.keys`, so a rebind shows up and an
+-- unset key drops its row.
+---@type { [1]: string, [2]: string }[]
+local HELP = {
+    { "prev_day", "previous day" },
+    { "next_day", "next day" },
+    { "prev_week", "previous week (agenda: previous entry)" },
+    { "next_week", "next week (agenda: next entry)" },
+    { "prev_month", "previous month" },
+    { "next_month", "next month" },
+    { "prev_year", "previous year" },
+    { "next_year", "next year" },
+    { "week_start", "first day of the week" },
+    { "week_end", "last day of the week" },
+    { "today", "jump to today" },
+    { "prev_mark", "previous marked day" },
+    { "next_mark", "next marked day" },
+    { "goto_date", "jump to a date (type it)" },
+    { "cycle_view", "cycle the view (month / quarter / year / agenda)" },
+    { "select", "pick the focused day (or open the agenda entry)" },
+    { "create", "create an entry on the focused day" },
+    { "help", "this help" },
+}
+
+--- The calendar's keymap cheatsheet — the shared `lvim-ui.help` component owns the rows, the striping, the
+--- colours and the window; this only supplies the plugin's LIVE keys.
+local function show_help()
+    local k = config.keys or {}
+    local items = {}
+    for _, e in ipairs(HELP) do
+        local lhs = k[e[1]]
+        if lhs then
+            lhs = type(lhs) == "table" and table.concat(lhs, " / ") or lhs
+            if lhs ~= "" then
+                items[#items + 1] = { lhs, e[2] }
+            end
+        end
+    end
+    require("lvim-ui").help({
+        title = "Calendar keymaps",
+        items = items,
+        close_keys = { "q", "<Esc>", type(k.help) == "table" and k.help[1] or k.help or "g?" },
+    })
+end
+
+--- The first key of a `string|string[]` key spec (for display in bars).
+---@param lhs string|string[]|nil
+---@return string
+local function key_label(lhs)
+    if type(lhs) == "table" then
+        return lhs[1] or "?"
+    end
+    return lhs or "?"
+end
+
 --- The shorthand action footer (the chassis key-badge style).
 ---@return table
 local function footer_spec()
+    local k = config.keys or {}
     return {
         bars = {
             {
                 items = {
-                    { key = "g", name = "goto", run = goto_date },
-                    { key = "v", name = "view", run = cycle_view },
+                    { key = key_label(k.goto_date), name = "goto", run = goto_date },
+                    { key = key_label(k.cycle_view), name = "view", run = cycle_view },
                     {
-                        key = "t",
+                        key = key_label(k.today),
                         name = "today",
                         run = function()
                             move_cursor(model.today())
                         end,
                     },
-                    { key = "<CR>", name = "pick", run = do_select },
+                    { key = key_label(k.select), name = "pick", run = do_select },
+                    -- the panel's keys are not discoverable from the grid, so the bar says where the
+                    -- cheatsheet is (the key itself is a frame-wide keymap — see keymaps_spec)
+                    { key = key_label(k.help), name = "help", no_hotkey = true, run = show_help },
                     {
                         key = "q",
                         name = "close",
@@ -629,6 +690,7 @@ local function keymaps_spec()
         hop(-1)
     end)
     add(k.goto_date, goto_date)
+    add(k.help, show_help)
     add(k.cycle_view, cycle_view)
     add(k.select, do_select)
     add(k.create, create_entry)
@@ -745,7 +807,7 @@ function M.open(opts)
             height = { auto = true, max = 0.9 },
         } or nil,
         header = header_spec(),
-        content = { blocks = { { id = "calendar", provider = provider } } },
+        content = { blocks = { { id = "calendar", provider = provider, border = config.content_border } } },
         footer = footer_spec(),
         keymaps = keymaps_spec(),
         on_close = function()
