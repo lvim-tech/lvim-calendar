@@ -77,7 +77,6 @@ require("lvim-calendar").pick({ -- date-picker for another plugin's form
 | `w` / `b` | next / previous **decorated** day (a day with entries) |
 | `gd` | goto date — `2026-07-06`, `06.07`, `6.7.2027`, `+3d`, `-2w`, `+1m`, `-1y` |
 | `v` | cycle month → quarter → year → agenda |
-| `m` `Q` `y` `a` | switch view directly (the header filter band) |
 | `d` `W` `f` `M` | agenda span: day / week / fortnight / month |
 | `<CR>` | confirm the day (callback / insert) in EVERY grid view; agenda: open the entry |
 | `i` | create an entry on the cursor day (source `on_create`; a chooser when several can) |

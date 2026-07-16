@@ -43,17 +43,17 @@ local CHROME_ROWS = 8
 -- every view; the span group avoids `w` (next mark) and `m` with `W`/`M`.
 ---@type table[]
 local VIEW_BUTTONS = {
-    { id = "month", label = "Month", key = "m" },
-    { id = "quarter", label = "Quarter", key = "u" },
-    { id = "year", label = "Year", key = "y" },
-    { id = "agenda", label = "Agenda", key = "a" },
+    { id = "month", label = "Month" },
+    { id = "quarter", label = "Quarter" },
+    { id = "year", label = "Year" },
+    { id = "agenda", label = "Agenda" },
 }
 ---@type table[]
 local SPAN_BUTTONS = {
-    { id = "day", label = "Day", key = "d" },
-    { id = "week", label = "Week", key = "W" },
-    { id = "fortnight", label = "Fortnight", key = "f" },
-    { id = "month", label = "Month", key = "M" },
+    { id = "day", label = "Day" },
+    { id = "week", label = "Week" },
+    { id = "fortnight", label = "Fortnight" },
+    { id = "month", label = "Month" },
 }
 
 ---@class LvimCalendarPanelState
