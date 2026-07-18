@@ -44,6 +44,7 @@
 ---@field agenda_colors table                     Agenda striping: { odd, even, header, tint, active_tint, lead }
 ---@field insert_format string                    os.date format used when a selected day is inserted
 ---@field goto_hint string                        the accepted GOTO formats, shown in the prompt and the error
+---@field source_timeout_ms integer               ms before an unanswered async source fetch is un-wedged (0 = off)
 ---@field agenda LvimCalendarAgendaConfig         Agenda view defaults
 ---@field holidays table[]                        Built-in `holidays` source input (see sources.lua)
 ---@field dates table[]                           Built-in `dates` source input (see sources.lua)
@@ -63,6 +64,11 @@ return {
     -- rejected input tells you what would have worked instead of just refusing. Keep it in sync with
     -- `model.parse_goto` (the separator is free: `.` `-` `/` or a space; the 4-digit year decides the order).
     goto_hint = "2026-07-06 · 22.12.2021 · 6.7 · +3d · -2w · +1m · -1y · t",
+    -- An async source promises to call `done(entries)` eventually. If it never does (a lost RPC, a buggy
+    -- consumer), its months would stay flagged in-flight forever and never be re-asked. After this many ms
+    -- the plugin un-wedges them (clears the in-flight markers so the next navigation re-fetches) and warns
+    -- once. Set to 0 to disable the guard (never time a fetch out).
+    source_timeout_ms = 30000,
     agenda = {
         span = "week",
         show_empty = false,

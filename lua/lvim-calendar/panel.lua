@@ -38,22 +38,26 @@ local CHROME_COLS = 6
 ---@type integer  rows the frame always draws around the content (title, view band, nav band, footer, air)
 local CHROME_ROWS = 8
 
--- Filter-band hotkeys avoid the taken keys. Quarter takes the `u` of Q[u]arter, NOT `Q`: `q` closes the
--- panel, so a capital `Q` right beside it reads as "the same key, shifted" and is a trap. `m` is free in
--- every view; the span group avoids `w` (next mark) and `m` with `W`/`M`.
+-- Direct filter hotkeys — each button carries the `key` that jumps straight to it (bound by
+-- keymaps_spec's `add(b.key, …)` loops; the filters bar itself ignores button keys, so these serve
+-- ONLY as the hotkeys). The letters avoid every taken key (see config.keys):
+--   VIEW  Month `m`, Quarter `u` (the `u` of Q[u]arter — NOT `Q`: `q` closes the panel, so a capital
+--         `Q` right beside it reads as "the same key, shifted" and is a trap), Year `y`, Agenda `a`.
+--   SPAN  Day `d`, Week `W`, Fortnight `f`, Month `M` — Week/Month go uppercase because `w` is next_mark
+--         and `m` is already the Month VIEW; the span keys only act in the agenda view (set_span guards).
 ---@type table[]
 local VIEW_BUTTONS = {
-    { id = "month", label = "Month" },
-    { id = "quarter", label = "Quarter" },
-    { id = "year", label = "Year" },
-    { id = "agenda", label = "Agenda" },
+    { id = "month", label = "Month", key = "m" },
+    { id = "quarter", label = "Quarter", key = "u" },
+    { id = "year", label = "Year", key = "y" },
+    { id = "agenda", label = "Agenda", key = "a" },
 }
 ---@type table[]
 local SPAN_BUTTONS = {
-    { id = "day", label = "Day" },
-    { id = "week", label = "Week" },
-    { id = "fortnight", label = "Fortnight" },
-    { id = "month", label = "Month" },
+    { id = "day", label = "Day", key = "d" },
+    { id = "week", label = "Week", key = "W" },
+    { id = "fortnight", label = "Fortnight", key = "f" },
+    { id = "month", label = "Month", key = "M" },
 }
 
 ---@class LvimCalendarPanelState
@@ -160,7 +164,6 @@ local function build(width)
         end
         view = next_view
     end
-    state.rendered_view = view -- what is ACTUALLY on screen (the header band shows it)
     return block, {}
 end
 
@@ -638,6 +641,18 @@ local function show_help()
             end
         end
     end
+    -- The direct view/span hotkeys are button keys (not config.keys), so append them from the LIVE
+    -- button tables — one row per group, keys and labels straight off the buttons so they never drift.
+    local function group_row(buttons, desc)
+        local keys, labels = {}, {}
+        for _, b in ipairs(buttons) do
+            keys[#keys + 1] = b.key
+            labels[#labels + 1] = b.label:lower()
+        end
+        return { table.concat(keys, " "), desc .. " (" .. table.concat(labels, " / ") .. ")" }
+    end
+    items[#items + 1] = group_row(VIEW_BUTTONS, "switch the view directly")
+    items[#items + 1] = group_row(SPAN_BUTTONS, "agenda span")
     require("lvim-ui").help({
         title = "Calendar keymaps",
         items = items,

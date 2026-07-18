@@ -189,6 +189,36 @@ local function fetch(src, range)
     end
     if type(res) == "table" and not done_called then
         store(src, range, res)
+    elseif not done_called then
+        -- The source went async (or returned nothing without calling done): its months are now flagged
+        -- in-flight. Arm a one-shot timeout so a `done()` that never lands cannot wedge them as "pending"
+        -- forever. On expiry, if this generation is still current and the markers are still set, clear them
+        -- (the next fetch re-asks) and warn once. The pending map is the plugin's own bookkeeping, so the
+        -- plugin owns its expiry — no fighting the source.
+        local timeout = config.source_timeout_ms or 0
+        if timeout > 0 then
+            vim.defer_fn(function()
+                if gen[src.name] ~= g then
+                    return -- a refresh() superseded this fetch; its markers were already reset
+                end
+                local stuck = false
+                for _, mk in ipairs(keys) do
+                    if pending[src.name .. "|" .. mk] then
+                        pending[src.name .. "|" .. mk] = nil
+                        stuck = true
+                    end
+                end
+                if stuck then
+                    vim.notify_once(
+                        ("lvim-calendar: source '%s' did not answer within %dms — will retry"):format(
+                            src.name,
+                            timeout
+                        ),
+                        vim.log.levels.WARN
+                    )
+                end
+            end, timeout)
+        end
     end
 end
 

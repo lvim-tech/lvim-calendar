@@ -77,6 +77,7 @@ require("lvim-calendar").pick({ -- date-picker for another plugin's form
 | `w` / `b` | next / previous **decorated** day (a day with entries) |
 | `gd` | goto date — `2026-07-06`, `06.07`, `6.7.2027`, `+3d`, `-2w`, `+1m`, `-1y` |
 | `v` | cycle month → quarter → year → agenda |
+| `m` `u` `y` `a` | switch the view directly (month / q[u]arter / year / agenda) |
 | `d` `W` `f` `M` | agenda span: day / week / fortnight / month |
 | `<CR>` | confirm the day (callback / insert) in EVERY grid view; agenda: open the entry |
 | `i` | create an entry on the cursor day (source `on_create`; a chooser when several can) |
@@ -157,6 +158,9 @@ require("lvim-calendar").setup({
     -- What the GOTO prompt accepts (shown IN the prompt and repeated in its error). The separator is free
     -- (`.` `-` `/` or a space) and the 4-digit year decides the order: `1973.12.22` and `22 12 2021` both work.
     goto_hint = "2026-07-06 · 22.12.2021 · 6.7 · +3d · -2w · +1m · -1y · t", -- os.date format for the default <CR> insert
+    -- ms before an async source that never calls done() is un-wedged (markers cleared, re-fetched on the
+    -- next navigation) and a one-time warning is shown. 0 disables the guard.
+    source_timeout_ms = 30000,
     agenda = {
         span = "week", -- "day" | "week" | "fortnight" | "month"
         show_empty = false, -- show day sections without entries
@@ -186,6 +190,19 @@ require("lvim-calendar").setup({
         select = "<CR>",
         create = "i",
         help = "g?", -- the keymap CHEATSHEET (also a `help` chip on the footer bar)
+    },
+    -- The CONTENT block's border. nil inherits the shared lvim-ui content ring (the blank " " ring), like
+    -- every other content panel. Set any lvim-ui border spec ("none", a preset name, or an 8-item ring).
+    content_border = nil,
+    -- Agenda row striping: every row is one accent washed at `tint`, rising to `active_tint` under the
+    -- cursor; `lead` is the strength of the per-source lead box.
+    agenda_colors = {
+        odd = "blue",
+        even = "yellow",
+        header = "blue",
+        tint = 0.05,
+        active_tint = 0.1,
+        lead = 0.1,
     },
     icons = {
         title = "󰃭", -- panel border-title glyph

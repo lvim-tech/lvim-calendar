@@ -228,14 +228,6 @@ function M.vjoin(blocks)
     return { rows = rows, width = width, cursor_row = cursor_row, cursor_last = cursor_last }
 end
 
---- Flatten span rows into the surface provider's `lines, hls` shape, plus per-day mouse `hitboxes`. THE
---- one place display columns meet byte offsets: padding above is computed in DISPLAY cells (strdisplaywidth
---- — a multibyte mark glyph must not break the column alignment), while the extmark highlight ranges here
---- are BYTE offsets (`#text`), which is what nvim_buf_set_extmark consumes. A span carrying a `date` (a day
---- cell) also emits a hitbox `{ row (0-based), c0, c1 (byte cols), date }` the panel hit-tests a click
---- against — the box's own rendered byte span, so the click maps precisely to that day and no other.
----@param rows LvimCalendarSpan[][]
----@return string[] lines, table[] hls, table[] hitboxes
 --- Centre a block inside `width`: every row gets the same left pad, so the grid sits in the middle of the
 --- panel instead of hugging its left edge. A block WIDER than the panel is returned untouched (the frame
 --- clips / the view degrades — see the panel's fit logic).
@@ -259,6 +251,14 @@ function M.center_block(block, width)
     return { rows = rows, width = width, cursor_row = block.cursor_row, cursor_last = block.cursor_last }
 end
 
+--- Flatten span rows into the surface provider's `lines, hls` shape, plus per-day mouse `hitboxes`. THE
+--- one place display columns meet byte offsets: padding above is computed in DISPLAY cells (strdisplaywidth
+--- — a multibyte mark glyph must not break the column alignment), while the extmark highlight ranges here
+--- are BYTE offsets (`#text`), which is what nvim_buf_set_extmark consumes. A span carrying a `date` (a day
+--- cell) also emits a hitbox `{ row (0-based), c0, c1 (byte cols), date }` the panel hit-tests a click
+--- against — the box's own rendered byte span, so the click maps precisely to that day and no other.
+---@param rows LvimCalendarSpan[][]
+---@return string[] lines, table[] hls, table[] hitboxes
 function M.flatten(rows)
     local lines, hls, hitboxes = {}, {}, {}
     for r, row in ipairs(rows) do

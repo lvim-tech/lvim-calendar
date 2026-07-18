@@ -46,6 +46,7 @@ sources and the |:LvimCalendar| command. The full defaults: >lua
         first_day = "monday",      -- monday | sunday
         week_numbers = false,      -- ISO week numbers per grid row
         insert_format = "%Y-%m-%d",-- os.date format for the <CR> insert
+        source_timeout_ms = 30000, -- un-wedge an async source that never calls done() (0 = off)
         agenda = {
             span = "week",         -- day | week | fortnight | month
             show_empty = false,    -- show day sections without entries
@@ -63,6 +64,11 @@ sources and the |:LvimCalendar| command. The full defaults: >lua
             goto_date = "gd", cycle_view = "v",
             select = "<CR>",  create = "i",
             help = "g?",      -- the keymap CHEATSHEET
+        },
+        content_border = nil,      -- nil inherits the shared lvim-ui content ring
+        agenda_colors = {          -- agenda row striping (accents + tint strengths)
+            odd = "blue", even = "yellow", header = "blue",
+            tint = 0.05, active_tint = 0.1, lead = 0.1,
         },
         icons = {
             title = "󰃭",      -- panel border-title glyph
@@ -101,7 +107,7 @@ agenda~
     title. Empty days are elided unless `agenda.show_empty`. <CR> opens the
     entry (source `on_open`, else `edit file` + line).
 
-The header carries the view filter band ([m]onth [Q]uarter [y]ear [a]genda),
+The header carries the view filter band ([m]onth Q[u]arter [y]ear [a]genda),
 the agenda span band, and a `‹ Month Year ›` / today nav band; the
 month-year button opens a quick-jump (month picker, then a year prompt).
 CTRL-J / CTRL-K move between the bands, the grid and the footer.
@@ -120,7 +126,7 @@ CTRL-J / CTRL-K move between the bands, the grid and the footer.
                      bare `g` cannot coexist with the `g?` cheatsheet chord)
     g?               the keymap CHEATSHEET (also a `help` chip on the footer)
     v                cycle month → quarter → year → agenda
-    m Q y a          switch the view directly
+    m u y a          switch the view directly (month / quarter / year / agenda)
     d W f M          agenda span: day / week / fortnight / month
     <CR>             confirm the day (every grid view) / open the agenda entry
     i                create an entry (source on_create; chooser when many)
