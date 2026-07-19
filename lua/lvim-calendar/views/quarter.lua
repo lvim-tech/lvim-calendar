@@ -17,6 +17,7 @@ local GAP = 4
 ---@param ctx LvimCalendarGridCtx
 ---@return LvimCalendarBlock
 function M.build(ctx)
+    ctx = vim.tbl_extend("force", {}, ctx) -- don't mutate the caller's ctx (see views/year.lua)
     ctx.compact = true -- the same compact grid as the month / year views
     ctx.heading = "full"
     local anchor = { y = ctx.cursor.y, m = ctx.cursor.m, d = 1 }

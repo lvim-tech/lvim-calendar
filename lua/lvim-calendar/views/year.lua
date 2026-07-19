@@ -26,6 +26,9 @@ end
 ---@param cols integer  mini-months per row (3 or 4)
 ---@return LvimCalendarBlock
 function M.build(ctx, cols)
+    ctx = vim.tbl_extend("force", {}, ctx) -- never mutate the caller's ctx: the panel reuses it across the
+    -- responsive year→quarter→month fallback, and week_numbers=false below would otherwise leak into the
+    -- degraded quarter/month build (grid.month_block only READS ctx, so a shallow copy is enough).
     ctx.compact = true
     ctx.heading = "month"
     ctx.week_numbers = false -- a mini-month has no room for a week column

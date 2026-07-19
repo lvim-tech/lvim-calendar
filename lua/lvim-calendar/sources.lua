@@ -249,6 +249,15 @@ function M.register_source(spec)
     by_name[spec.name] = spec
     cache[spec.name] = {}
     gen[spec.name] = (gen[spec.name] or 0) + 1
+    -- Re-registering over an in-flight fetch bumps the generation, so the old done()/timeout are
+    -- dropped WITHOUT clearing this name's pending markers — leaving its months flagged in-flight
+    -- forever (fetch's miss check never re-asks). Clear them here, exactly as refresh() does, so the
+    -- invariant the timeout early-return relies on holds: every generation bump resets the markers.
+    for k in pairs(pending) do
+        if k:sub(1, #spec.name + 1) == spec.name .. "|" then
+            pending[k] = nil
+        end
+    end
     notify()
     return true
 end

@@ -71,6 +71,7 @@ local SPAN_BUTTONS = {
 ---@field items LvimCalendarAgendaItem[]  agenda selectables of the LAST render
 ---@field hitboxes? table[]             per-day mouse click targets of the LAST grid render (see flatten)
 ---@field cursor_row integer           output row of the cell cursor (scroll target)
+---@field cursor_last integer?         last output row of the block holding the cursor (whole-month scroll anchor; nil for the agenda)
 ---@field on_select? fun(date: string) consumer callback (nil = insert into the origin buffer)
 ---@field unsubscribe? fun()           sources.on_update teardown
 local state = {
