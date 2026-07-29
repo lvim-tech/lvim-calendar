@@ -53,6 +53,10 @@ sources and the |:LvimCalendar| command. The full defaults: >lua
         },
         holidays = {},             -- built-in holidays source input
         dates = {},                -- built-in user dates source input
+        org_diary = {              -- built-in org-diary source (off by default)
+            enabled = false,
+            dir = "~/Org/diary",
+        },
         keys = {
             prev_day = "h",   next_day = "l",
             next_week = "j",  prev_week = "k",
@@ -172,6 +176,20 @@ require("lvim-calendar").register_source({spec})
 
 Built-in sources `holidays` and `dates` are registered by setup() from the
 config tables and double as reference implementations.
+
+                                                  *lvim-calendar-org-diary*
+`org_diary` is the third built-in, off by default. Turn it on with the
+directory the diary lives in: >lua
+    require("lvim-calendar").setup({
+        org_diary = { enabled = true, dir = "~/Org/diary" },
+    })
+<
+It reads orgmode's own layout — a YEAR/MONTH/DAY tree, `<dir>/2026/01/16.org`,
+one file per day — so a day's DATE comes from its PATH, not from a file name.
+An entry's title is that file's first org heading (`Diary` when it has none);
+creating an entry on a day opens that day's file, making the YEAR/MONTH
+directories on the way; and saving a diary file re-decorates its day at once,
+without waiting for the panel to be reopened.
 
 ==============================================================================
 7. API                                                   *lvim-calendar-api*

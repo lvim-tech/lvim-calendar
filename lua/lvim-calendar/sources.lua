@@ -431,9 +431,93 @@ local function expand_config_dates(list, range)
     return out
 end
 
+--- The org-diary layout: a YEAR/MONTH/DAY tree (`<dir>/2026/01/16.org`), which is orgmode's own.
+--- The DATE COMES FROM THE PATH, not from a file name — a flat `YYYY-MM-DD.org` glob finds nothing
+--- in a real diary tree.
+---@param dir string  the diary root
+---@param date string  ISO "YYYY-MM-DD"
+---@return string|nil  the file that date belongs in
+local function diary_file(dir, date)
+    local y, m, d = date:match("^(%d%d%d%d)-(%d%d)-(%d%d)$")
+    return y and ("%s/%s/%s/%s.org"):format(dir, y, m, d) or nil
+end
+
+--- The reverse: the date a diary file stands for, read from its last three path components.
+---@param file string
+---@return string|nil  ISO "YYYY-MM-DD"
+local function diary_date(file)
+    local y, m, d = file:match("(%d%d%d%d)/(%d%d)/(%d%d)%.org$")
+    return y and ("%s-%s-%s"):format(y, m, d) or nil
+end
+
+--- A diary entry's title: the file's FIRST org heading, when it has one. Only the head of the file
+--- is read (20 lines) — a diary entry that buries its heading deeper is not one.
+---@param file string
+---@return string
+local function diary_title(file)
+    local ok, lines = pcall(vim.fn.readfile, file, "", 20)
+    if ok then
+        for _, l in ipairs(lines) do
+            local head = l:match("^%*+%s+(.+)$")
+            if head then
+                return head
+            end
+        end
+    end
+    return "Diary"
+end
+
+--- Register the built-in `org-diary` source over `config.org_diary.dir`, and keep the calendar in
+--- step with the tree: writing a diary file invalidates the cache so that day decorates at once.
+---
+--- SHIPPED RATHER THAN LEFT TO EVERY CONFIG, because the layout it reads is not a preference — it
+--- is orgmode's, and every reader of an org diary wants exactly this source. What stays a
+--- preference is the directory, which is why that is all the config carries.
+---@return nil
+local function setup_org_diary()
+    local conf = config.org_diary
+    if not (type(conf) == "table" and conf.enabled) then
+        return
+    end
+    local dir = vim.fn.expand(conf.dir)
+
+    M.register_source({
+        name = "org-diary",
+        icon = config.icons.org_diary,
+        accent = "green",
+        get = function(range)
+            local entries = {}
+            for _, file in ipairs(vim.fn.glob(dir .. "/**/*.org", false, true)) do
+                local date = diary_date(file)
+                if date and date >= range.from and date <= range.to then
+                    entries[#entries + 1] = { date = date, title = diary_title(file), file = file, line = 1 }
+                end
+            end
+            return entries
+        end,
+        on_create = function(date)
+            local file = diary_file(dir, date)
+            if not file then
+                return
+            end
+            vim.fn.mkdir(vim.fn.fnamemodify(file, ":h"), "p") -- the YEAR/MONTH dirs may not exist yet
+            vim.cmd.edit(file)
+        end,
+    })
+
+    vim.api.nvim_create_autocmd("BufWritePost", {
+        group = vim.api.nvim_create_augroup("LvimCalendarOrgDiary", { clear = true }),
+        pattern = dir .. "/*/*/*.org",
+        callback = function()
+            M.refresh("org-diary")
+        end,
+        desc = "lvim-calendar: a saved diary file re-decorates its day",
+    })
+end
+
 --- Register the built-in `holidays` + `dates` sources (called once from setup). Both read the
 --- LIVE config tables on every fetch, so a runtime mutation followed by `refresh()` is enough —
---- no re-registration.
+--- no re-registration. `org-diary` joins them when its directory is configured.
 function M.setup_builtins()
     M.register_source({
         name = "holidays",
@@ -451,6 +535,7 @@ function M.setup_builtins()
             return expand_config_dates(config.dates, range)
         end,
     })
+    setup_org_diary()
 end
 
 return M

@@ -77,6 +77,12 @@ return {
     -- or keyed): `date` is "MM-DD" (recurs every year) or "YYYY-MM-DD" (a single occurrence).
     --   holidays = { { "01-01", "New Year" }, { "2026-04-13", "Easter Monday" } }
     holidays = {},
+
+    -- The ORG DIARY as an entry source: an orgmode YEAR/MONTH/DAY tree
+    -- (`<dir>/2026/01/16.org`), each file a day. Its title is the file's first org heading, and
+    -- creating an entry on a day opens (and creates) that day's file. Saving one re-decorates its
+    -- day at once. Off by default — turn it on with the directory you keep the diary in.
+    org_diary = { enabled = false, dir = "~/Org/diary" },
     -- Built-in user DATES source (the vim-diary shape): entries you want on the calendar/agenda.
     -- `{ date, title, time?, mark?, file?, line? }` — `date` as above; `file`/`line` make <CR>
     -- in the agenda jump there.
@@ -129,6 +135,7 @@ return {
         title = "󰃭",
         holidays = "",
         dates = "󰃶",
+        org_diary = "󰠮",
         mark = "•",
     },
 }

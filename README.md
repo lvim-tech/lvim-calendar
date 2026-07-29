@@ -167,6 +167,11 @@ require("lvim-calendar").setup({
     },
     -- built-in holidays source: { date, title } — "MM-DD" recurs yearly, "YYYY-MM-DD" is one-off
     holidays = {},
+
+    -- The ORG DIARY as an entry source: an orgmode YEAR/MONTH/DAY tree (`<dir>/2026/01/16.org`),
+    -- one file per day. The entry's title is the file's first org heading; creating an entry on a
+    -- day opens (and creates) that day's file; saving one re-decorates its day at once.
+    org_diary = { enabled = false, dir = "~/Org/diary" },
     -- built-in user dates source: { date, title, time?, mark?, file?, line? }
     dates = {},
     keys = {
