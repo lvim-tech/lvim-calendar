@@ -852,11 +852,9 @@ function M.open(opts)
         -- Grid views hit-test the day HITBOXES flatten emitted (the day's own byte span → its ISO date →
         -- `move_cursor`); the agenda hit-tests its selectable ITEM rows (row ↔ entry) and selects that entry.
         -- No-op off any day / entry; `move_cursor` self-repaints + fires the LvimCalendarDay preview event.
-        ---@param _pan table
-        ---@param _st table
         ---@param line integer  1-based clicked buffer row
         ---@param col integer   0-based clicked byte column
-        on_click = function(_pan, _st, line, col)
+        on_click = function(_, _, line, col)
             if state.view == "agenda" then
                 for i, it in ipairs(state.items or {}) do
                     if it.row == line then

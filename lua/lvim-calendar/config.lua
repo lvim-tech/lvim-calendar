@@ -34,6 +34,7 @@
 ---@field title string           The panel border-title glyph
 ---@field holidays string        Lead icon of the built-in `holidays` source
 ---@field dates string           Lead icon of the built-in `dates` source
+---@field org_diary string       Lead icon of the built-in `org-diary` source
 ---@field mark string            Default day-cell mark glyph for a decorated day
 
 ---@class LvimCalendarConfig
